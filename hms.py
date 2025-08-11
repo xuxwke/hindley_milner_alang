@@ -49,6 +49,19 @@ class Apply(object):
 
     def __str__(self):
         return "({fn} {arg})".format(fn=self.fn, arg=self.arg)
+    
+
+class Block(object):
+    """用于函数体, if else, while 的语句块"""
+
+    def __init__(self):
+        self.expressions = []
+
+    def addExpression(self, exp):
+        self.expressions.append(exp)
+
+    def __str__(self):
+        return "block"
 
 
 # =======================================================#

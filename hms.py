@@ -8,60 +8,11 @@
 """
 
 from __future__ import print_function
+from hms_ast import *
 
 
-# log = print
-log = lambda *args, **kwargs: None  # Disable logging by default
-
-
-# =======================================================#
-# Class definitions for the abstract syntax tree nodes
-# which comprise the little language for which types
-# will be inferred
-
-class Lambda(object):
-    """Lambda abstraction"""
-
-    def __init__(self, v, body):
-        self.v = v
-        self.body = body
-
-    def __str__(self):
-        return "(fn {v} => {body})".format(v=self.v, body=self.body)
-
-
-class Identifier(object):
-    """Identifier"""
-
-    def __init__(self, name):
-        self.name = name
-
-    def __str__(self):
-        return self.name
-
-
-class Apply(object):
-    """Function application"""
-
-    def __init__(self, fn, arg):
-        self.fn = fn
-        self.arg = arg
-
-    def __str__(self):
-        return "({fn} {arg})".format(fn=self.fn, arg=self.arg)
-    
-
-class Block(object):
-    """用于函数体, if else, while 的语句块"""
-
-    def __init__(self):
-        self.expressions = []
-
-    def addExpression(self, exp):
-        self.expressions.append(exp)
-
-    def __str__(self):
-        return "block"
+log = print
+# log = lambda *args, **kwargs: None  # Disable logging by default
 
 
 # =======================================================#
@@ -163,75 +114,77 @@ Bool = TypeOperator("bool", [])  # Basic bool
 # =======================================================#
 # Type inference machinery
 
-def analyse(node, env, non_generic=None):
-    """Computes the type of the expression given by node.
+class TypeInfer:
+    def __init__(self):
+        self._env = {}
+        self._symbolType: dict = {}
 
-    The type of the node is computed in the context of the
-    supplied type environment env. Data types can be introduced into the
-    language simply by having a predefined set of identifiers in the initial
-    environment. environment; this way there is no need to change the syntax or, more
-    importantly, the type-checking program when extending the language.
+    def symbolTypeAdd(self, symbolName: str, line: int, col: int, varType: TypeOperator):
+        self._symbolType[f"{symbolName}_{line}_{col}"] = str(varType)
 
-    Args:
-        node: The root of the abstract syntax tree.
-        env: The type environment is a mapping of expression identifier names
-            to type assignments.
-            to type assignments.
-        non_generic: A set of non-generic variables, or None
+    def symbolTypeJson(self):
+        import json
+        return json.dumps(self._symbolType, ensure_ascii=False, indent=2)
 
-    Returns:
-        The computed type of the expression.
+    def setType(self, name: str, hmsType: TypeOperator):
+        self._env[name] = hmsType
 
-    Raises:
-        InferenceError: The type of the expression could not be inferred, for example
-            if it is not possible to unify two types such as Integer and Bool
-        ParseError: The abstract syntax tree rooted at node could not be parsed
-    """
+    def getTypeFromEnv(self, name: str):
+        return self._env.get(name, None)
 
-    if non_generic is None:
-        non_generic = set()
+    def getType(self, name: str, non_generic: set) -> TypeOperator:
+        """Get the type of identifier name from the type environment env.
 
-    if isinstance(node, Identifier):
-        log("analyse: Identifier({0})".format(node.name))
-        return get_type(node.name, env, non_generic)
-    elif isinstance(node, Apply):
-        log("analyse: Apply")
-        fun_type = analyse(node.fn, env, non_generic)
-        arg_type = analyse(node.arg, env, non_generic)
-        result_type = TypeVariable()
-        unify(Function(arg_type, result_type), fun_type)
-        return result_type
-    elif isinstance(node, Lambda):
-        log("analyse: Lambda")
-        arg_type = TypeVariable()
-        new_env = env.copy()
-        new_env[node.v] = arg_type
-        new_non_generic = non_generic.copy()
-        new_non_generic.add(arg_type)
-        result_type = analyse(node.body, new_env, new_non_generic)
-        return Function(arg_type, result_type)
-    assert 0, "Unhandled syntax node {0}".format(type(node))
+        Args:
+            name: The identifier name
+            env: The type environment mapping from identifier names to types
+            non_generic: A set of non-generic TypeVariables
 
+        Raises:
+            ParseError: Raised if name is an undefined symbol in the type
+                environment.
+        """
+        if self.getTypeFromEnv(name) is not None:
+            return fresh(self.getTypeFromEnv(name), non_generic)
+        elif is_integer_literal(name):
+            return Integer
+        else:
+            raise ParseError("Undefined symbol {0}".format(name))
 
-def get_type(name, env, non_generic):
-    """Get the type of identifier name from the type environment env.
+    def analyse(self, node: HmNode, non_generic=None) -> TypeOperator:
+        if non_generic is None:
+            non_generic = set()
 
-    Args:
-        name: The identifier name
-        env: The type environment mapping from identifier names to types
-        non_generic: A set of non-generic TypeVariables
+        log('node', type(node))
+        if isinstance(node, VarDefine):
+            log("infer 变量定义")
+            t = self.analyse(node.expression, non_generic)
+            self.setType(node.identifier.name, t)
+            self.symbolTypeAdd(node.identifier.name, node.symbol.line, node.symbol.column, t)
 
-    Raises:
-        ParseError: Raised if name is an undefined symbol in the type
-            environment.
-    """
-    log(f"get_type: name({name}) env({env}) non_generic({non_generic})")
-    if name in env:
-        return fresh(env[name], non_generic)
-    elif is_integer_literal(name):
-        return Integer
-    else:
-        raise ParseError("Undefined symbol {0}".format(name))
+        if isinstance(node, Identifier):
+            to = self.getType(node.name, non_generic)
+            self.symbolTypeAdd(node.name, node.symbol.line, node.symbol.column, to)
+            return to
+        
+        elif isinstance(node, Apply):
+            log("analyse: Apply")
+            fun_type = self.analyse(node.fn, non_generic)
+            arg_type = self.analyse(node.arg, non_generic)
+            result_type = TypeVariable()
+            unify(Function(arg_type, result_type), fun_type)
+            return result_type
+        
+        elif isinstance(node, Lambda):
+            log("analyse: Lambda")
+            arg_type = TypeVariable()
+            new_env = self._env.copy()
+            new_env[node.v] = arg_type
+            new_non_generic = non_generic.copy()
+            new_non_generic.add(arg_type)
+            result_type = self.analyse(node.body, new_env, new_non_generic)
+            return Function(arg_type, result_type)
+        # assert 0, "Unhandled syntax node {0}".format(type(node))
 
 
 def fresh(t, non_generic):
@@ -399,21 +352,25 @@ def is_integer_literal(name):
 
 # ==================================================================#
 # Example code to exercise the above
+def analyse(node):
+    ti = TypeInfer()
+    ti.analyse(node)
+    return ti
 
 
-def try_exp(env, node):
-    """Try to evaluate a type printing the result or reporting errors.
+# def try_exp(env, node):
+#     """Try to evaluate a type printing the result or reporting errors.
 
-    Args:
-        env: The type environment in which to evaluate the expression.
-        node: The root node of the abstract syntax tree of the expression.
+#     Args:
+#         env: The type environment in which to evaluate the expression.
+#         node: The root node of the abstract syntax tree of the expression.
 
-    Returns:
-        None
-    """
-    print(str(node) + " :", end=' ')
-    try:
-        t = analyse(node, env)
-        print(str(t))
-    except (ParseError, InferenceError) as e:
-        print(e)
+#     Returns:
+#         None
+#     """
+#     print(str(node) + " :", end=' ')
+#     try:
+#         t = analyse(node, env)
+#         print(str(t))
+#     except (ParseError, InferenceError) as e:
+#         print(e)

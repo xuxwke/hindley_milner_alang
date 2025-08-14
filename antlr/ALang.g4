@@ -60,7 +60,7 @@ expression:
     |
     STRING                                                      # LabelExpressionLiteralString
     |
-    'return' ((expression) ',')* (expression?)             # LabelExpressionReturn
+    'return' expression                                         # LabelExpressionReturn
     |
     ('var' | 'const') VAR '=' function                                    # LabelExpressionFunctionDefinition
     |
@@ -111,7 +111,7 @@ block:
     ;
 
 function:
-    'function' '(' (expression ',')* expression? ')' block    # LabelFunction
+    'function' '(' (VAR ',')* VAR? ')' block    # LabelFunction
     ;
 
 

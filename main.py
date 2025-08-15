@@ -3,7 +3,7 @@ from antlr.ALangLexer import ALangLexer
 from antlr.ALangParser import ALangParser
 from antlr.ALangVisitor import ALangVisitor
 
-from hms import fresh, is_integer_literal, Integer, ParseError, TypeOperator, Identifier, TypeVariable, Function
+from hms import fresh, is_integer_literal, Integer, ParseError, TypeOperator, Identifier, TypeVariable, Function, unify
 
 log = print
 
@@ -19,8 +19,9 @@ class TypeInferVisitor(ALangVisitor):
         self._env = {}
         self._symbolType: dict = {}
 
-    def symbolTypeAdd(self, symbolName: str, line: int, col: int, varType: TypeOperator):
-        self._symbolType[f"{symbolName}_{line}_{col}"] = str(varType)
+    def symbolTypeAdd(self, astTokenNode, varType: TypeOperator):
+        key = f"{astTokenNode.getText()}_{astTokenNode.getSymbol().line}_{astTokenNode.getSymbol().column}"
+        self._symbolType[key] = str(varType)
 
     def symbolTypeJson(self):
         import json
@@ -28,6 +29,16 @@ class TypeInferVisitor(ALangVisitor):
 
     def envSetType(self, name: str, hmsType: TypeOperator|TypeVariable):
         self._env[name] = hmsType
+
+    def getNonNenericSet(self) -> set:
+        """
+        返回非泛型的类型集合
+        """
+        non_generic = set()
+        for name, t in self._env.items():
+            if isinstance(t, TypeVariable):
+                non_generic.add(t)
+        return non_generic
 
     def _getTypeFromEnv(self, name: str):
         return self._env.get(name, None)
@@ -48,7 +59,7 @@ class TypeInferVisitor(ALangVisitor):
         # 推导变量类型
         log('visit 变量定义')
         exprType = self.visit(ctx.expression())
-        self.symbolTypeAdd(ctx.VAR().getText(), ctx.VAR().getSymbol().line, ctx.VAR().getSymbol().column, exprType)
+        self.symbolTypeAdd(ctx.VAR(), exprType)
         self.envSetType(ctx.VAR().getText(), exprType)
         return None
 
@@ -56,34 +67,38 @@ class TypeInferVisitor(ALangVisitor):
     def visitLabelExpressionLiteralInt(self, ctx: ALangParser.LabelExpressionLiteralIntContext):
         # 返回 int 类型
         # 记录 symbol 和类型
-        self.symbolTypeAdd(ctx.INT().getText(), ctx.INT().getSymbol().line, ctx.INT().getSymbol().column, Integer)
+        self.symbolTypeAdd(ctx.INT(), Integer)
         return Integer
     
     def visitLabelExpressionVariable(self, ctx: ALangParser.LabelExpressionVariableContext):
-        # int 类型
-        log('visit 变量')
-        return Identifier(ctx.VAR().getText())
+        # 返回变量的类型
+        non_generic = self.getNonNenericSet()
+        t = self.getType(ctx.VAR().getText(), non_generic)
+        self.symbolTypeAdd(ctx.VAR(), t)
+        return t
+
     
     def visitLabelExpressionFunctionDefinition(self, ctx: ALangParser.LabelExpressionFunctionDefinitionContext):
         # 函数定义
         log('visit 函数定义', ctx.VAR().getText())
         funType = self.visit(ctx.function())
-        self.symbolTypeAdd(ctx.VAR().getText(), ctx.VAR().getSymbol().line, ctx.VAR().getSymbol().column, funType)
+        self.symbolTypeAdd(ctx.VAR(), funType)
         self.envSetType(ctx.VAR().getText(), funType)
         return None
 
     def visitLabelFunction(self, ctx: ALangParser.LabelFunctionContext):
         # 返回函数类型
         # 作用域加入参数的类型
-        non_generic = set()
         for exp in ctx.VAR():
             t = TypeVariable()
-            non_generic.add(t)
             self.envSetType(exp.getText(), t)
+            self.symbolTypeAdd(exp, t)
         # body
         self.visit(ctx.block())
         
-        return Function(self.getType(exp.getText(), non_generic), self.getType(self.returnVarName, non_generic))
+        non_generic = self.getNonNenericSet()
+        # fixme: 支持多个入参
+        return Function(self.getType(ctx.VAR(0).getText(), non_generic), self.getType(self.returnVarName, non_generic))
 
     def visitLabelBlock(self, ctx: ALangParser.LabelBlockContext):
         # 收集并返回一个 Block
@@ -96,12 +111,29 @@ class TypeInferVisitor(ALangVisitor):
         retType = self.visit(ctx.expression())
         self.envSetType(TypeInferVisitor.returnVarName, retType)
         return None
+    
+    def visitLabelExpressionCall(self, ctx: ALangParser.LabelExpressionCallContext):
+        # 函数调用
+        funType = self.visit(ctx.expression(0))
+        argTypes = []
+        for i, expr in enumerate(ctx.expression()[1:]):
+            argType = self.visit(expr)
+            argTypes.append(argType)
+        
+        resultType = TypeVariable()
+        unify(Function(argTypes[0], resultType), funType)
+        return resultType
 
 
 def main():
     import os
-    # input_stream = ant.FileStream(os.path.dirname(__file__)+"/examples/1_var.al")
-    input_stream = ant.FileStream(os.path.dirname(__file__)+"/examples/2_function.al")
+    filePath = "/examples/1_var.al"
+    filePath = "/examples/2_function.al"
+    filePath = "/examples/3_function_retx.al"
+    filePath = "/examples/tmp.al"
+    filePath = "/examples/4_apply_int.al"
+    input_stream = ant.FileStream(os.path.dirname(__file__)+filePath)
+    
     lexer = ALangLexer(input_stream)
     stream = ant.CommonTokenStream(lexer)
     tree = ALangParser(stream).start()

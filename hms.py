@@ -202,9 +202,7 @@ def fresh(t, non_generic):
     def freshrec(tp):
         p = prune(tp)
         if isinstance(p, TypeVariable):
-            log(f'  fresh TypeVariable')
             if is_generic(p, non_generic):
-                log(f'    fresh {p} is_generic')
                 if p not in mappings:
                     mappings[p] = TypeVariable()
                 return mappings[p]

@@ -42,7 +42,7 @@ start:
 // 就只能在 expression 的访问函数中自己判断当前是哪个类型的 expression
 // 那可就太蛋疼了
 expression:
-    expression '(' ((expression|function) ',')* (expression|function)? ')'           # LabelExpressionCall
+    expression '(' ((expression) ',')* (expression)? ')'           # LabelExpressionCall
     |
     expression op=('+' | '-'| '*' | '/' | '%') expression       # LabelExpressionArithmetic
     |
@@ -75,6 +75,8 @@ expression:
     VAR                                                         # LabelExpressionVariable
     |
     'while' '(' expression ')' block                            # LabelExpressionWhile
+    |
+    function                                          # LabelExpressionFunction
     ;
 
 

@@ -19,6 +19,11 @@ class ALangVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by ALangParser#LabelExpressionFunction.
+    def visitLabelExpressionFunction(self, ctx:ALangParser.LabelExpressionFunctionContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by ALangParser#LabelExpressionLiteralString.
     def visitLabelExpressionLiteralString(self, ctx:ALangParser.LabelExpressionLiteralStringContext):
         return self.visitChildren(ctx)

@@ -85,25 +85,29 @@ class TypeVariable(object):
 class TypeOperator(object):
     """An n-ary type constructor which builds a new type from old"""
 
-    def __init__(self, name, types):
+    def __init__(self, name, fromTypes: list, toTypes=[]):
         self.name = name
-        self.types = types
+        self.fromTypes = fromTypes
+        self.toTypes = toTypes
 
     def __str__(self):
-        num_types = len(self.types)
-        if num_types == 0:
+        # Int, Bool 类型
+        if len(self.fromTypes) == 0 and len(self.toTypes) == 0:
             return self.name
-        elif num_types == 2:
-            return "({0} {1} {2})".format(str(self.types[0]), self.name, str(self.types[1]))
-        else:
-            return "{0} {1}" .format(self.name, ' '.join(self.types))
+        
+        # Function 类型
+        return "({0} {1} {2})".format(
+            ','.join([str(s) for s in self.fromTypes]),
+            self.name,
+            ','.join([str(s) for s in self.toTypes]),
+            )
 
 
 class Function(TypeOperator):
     """A binary type constructor which builds function types"""
 
-    def __init__(self, from_type, to_type):
-        super(Function, self).__init__("->", [from_type, to_type])
+    def __init__(self, fromTypes, toTypes):
+        super(Function, self).__init__("->", fromTypes, toTypes)
 
 
 # Basic types are constructed with a nullary type constructor
@@ -210,7 +214,10 @@ def fresh(t, non_generic):
                 return p
         elif isinstance(p, TypeOperator):
             log(f'  fresh TypeOperator')
-            return TypeOperator(p.name, [freshrec(x) for x in p.types])
+            return TypeOperator(p.name,
+                                [freshrec(x) for x in p.fromTypes],
+                                [freshrec(x) for x in p.toTypes]
+                                )
 
     return freshrec(t)
 
@@ -234,20 +241,18 @@ def unify(t1, t2):
     a = prune(t1)
     b = prune(t2)
     if isinstance(a, TypeVariable):
-        log('  unify var')
         if a != b:
             if occurs_in_type(a, b):
                 raise InferenceError("recursive unification")
             a.instance = b
     elif isinstance(a, TypeOperator) and isinstance(b, TypeVariable):
-        log(f'  unify op({a}) var({b})')
         unify(b, a)
     elif isinstance(a, TypeOperator) and isinstance(b, TypeOperator):
-        log('  unify op op')
-        if a.name != b.name or len(a.types) != len(b.types):
+        if a.name != b.name or len(a.fromTypes) != len(b.fromTypes) or len(a.toTypes) != len(b.toTypes):
             raise InferenceError("Type mismatch: {0} != {1}".format(str(a), str(b)))
-        for p, q in zip(a.types, b.types):
-            log(f'    zip {p}, {q}')
+        for p, q in zip(a.fromTypes, b.fromTypes):
+            unify(p, q)
+        for p, q in zip(a.toTypes, b.toTypes):
             unify(p, q)
     else:
         assert 0, "Not unified"
@@ -314,7 +319,7 @@ def occurs_in_type(v, type2):
     if pruned_type2 == v:
         return True
     elif isinstance(pruned_type2, TypeOperator):
-        return occurs_in(v, pruned_type2.types)
+        return occurs_in(v, pruned_type2.fromTypes)
     return False
 
 

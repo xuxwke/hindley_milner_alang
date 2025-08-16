@@ -16,7 +16,7 @@ class TypeInferVisitor(ALangVisitor):
 
     def __init__(self):
         super().__init__()
-        self._env = {}
+        self._envs = [{}]
         self._symbolType: dict = {}
 
     def symbolTypeAdd(self, astTokenNode, varType: TypeOperator):
@@ -26,22 +26,36 @@ class TypeInferVisitor(ALangVisitor):
     def symbolTypeJson(self):
         import json
         return json.dumps(self._symbolType, ensure_ascii=False, indent=2)
+    
+    def enter(self):
+        self._envs.append({})
+
+    def leave(self):
+        self._envs.pop()
+
+    def getCurrentEnv(self):
+        return self._envs[-1]
 
     def envSetType(self, name: str, hmsType: TypeOperator|TypeVariable):
-        self._env[name] = hmsType
+        self.getCurrentEnv()[name] = hmsType
 
     def getNonNenericSet(self) -> set:
         """
         返回非泛型的类型集合
         """
         non_generic = set()
-        for name, t in self._env.items():
-            if isinstance(t, TypeVariable):
-                non_generic.add(t)
+        for _, env in enumerate(self._envs):
+            for _, t in env.items():
+                if isinstance(t, TypeVariable):
+                    non_generic.add(t)
         return non_generic
 
     def _getTypeFromEnv(self, name: str):
-        return self._env.get(name, None)
+        for env in reversed(self._envs):
+            if name in env:
+                return env[name]
+        # 如果没有找到，返回 None
+        return None
 
     def getType(self, name: str, non_generic: set) -> TypeOperator:
         if self._getTypeFromEnv(name) is not None:
@@ -57,7 +71,7 @@ class TypeInferVisitor(ALangVisitor):
 
     def visitLabelExpressionDefinition(self, ctx:ALangParser.LabelExpressionDefinitionContext):
         # 推导变量类型
-        log('visit 变量定义')
+        log('visit 变量定义', ctx.VAR().getText())
         exprType = self.visit(ctx.expression())
         self.symbolTypeAdd(ctx.VAR(), exprType)
         self.envSetType(ctx.VAR().getText(), exprType)
@@ -73,8 +87,12 @@ class TypeInferVisitor(ALangVisitor):
     def visitLabelExpressionVariable(self, ctx: ALangParser.LabelExpressionVariableContext):
         # 返回变量的类型
         non_generic = self.getNonNenericSet()
+        log('non_generic')
+        for e in non_generic:
+            log('  ', str(e))
         t = self.getType(ctx.VAR().getText(), non_generic)
         self.symbolTypeAdd(ctx.VAR(), t)
+        log('visit 变量', ctx.VAR().getText(), '类型', str(t))
         return t
 
     
@@ -82,12 +100,14 @@ class TypeInferVisitor(ALangVisitor):
         # 函数定义
         log('visit 函数定义', ctx.VAR().getText())
         funType = self.visit(ctx.function())
+        log('定义', str(funType))
         self.symbolTypeAdd(ctx.VAR(), funType)
         self.envSetType(ctx.VAR().getText(), funType)
         return None
 
     def visitLabelFunction(self, ctx: ALangParser.LabelFunctionContext):
         # 返回函数类型
+        self.enter()
         # 作用域加入参数的类型
         for exp in ctx.VAR():
             t = TypeVariable()
@@ -98,7 +118,10 @@ class TypeInferVisitor(ALangVisitor):
         
         non_generic = self.getNonNenericSet()
         # fixme: 支持多个入参
-        return Function(self.getType(ctx.VAR(0).getText(), non_generic), self.getType(self.returnVarName, non_generic))
+        res =  Function([self.getType(ctx.VAR(0).getText(), non_generic)], [self.getType(self.returnVarName, non_generic)])
+        self.leave()
+        return res
+
 
     def visitLabelBlock(self, ctx: ALangParser.LabelBlockContext):
         # 收集并返回一个 Block
@@ -121,7 +144,8 @@ class TypeInferVisitor(ALangVisitor):
             argTypes.append(argType)
         
         resultType = TypeVariable()
-        unify(Function(argTypes[0], resultType), funType)
+        log('调用的函数', str(funType))
+        unify(Function([argTypes[0]], [resultType]), funType)
         return resultType
 
 

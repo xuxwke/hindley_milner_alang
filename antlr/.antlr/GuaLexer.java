@@ -1,4 +1,4 @@
-// Generated from /home/hy/code/haiyou/hindley_milner_in_alang/antlr/Gua.g4 by ANTLR 4.13.1
+// Generated from /home/hy/code/haiyou/hindley_milner_in_alang/type_infer/antlr/Gua.g4 by ANTLR 4.13.1
 import org.antlr.v4.runtime.Lexer;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.Token;

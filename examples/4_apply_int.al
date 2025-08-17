@@ -2,4 +2,4 @@ const f = function(x) {
     return x
 }
 
-f
+var a = f(11)

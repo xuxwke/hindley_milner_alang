@@ -280,7 +280,6 @@ def prune(t):
             t.instance = prune(t.instance)
             log(f"prune: {t} pruned to {t.instance}")
             return t.instance
-    log(f"prune: {t} not TypeVariable or no instance")
     return t
 
 

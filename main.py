@@ -118,7 +118,10 @@ class TypeInferVisitor(ALangVisitor):
         
         non_generic = self.getNonNenericSet()
         # fixme: 支持多个入参
-        res =  Function([self.getType(ctx.VAR(0).getText(), non_generic)], [self.getType(self.returnVarName, non_generic)])
+        res =  Function(
+            [self.getType(v.getText(), non_generic) for v in ctx.VAR()],
+            [self.getType(self.returnVarName, non_generic)],
+            )
         self.leave()
         return res
 
@@ -145,7 +148,7 @@ class TypeInferVisitor(ALangVisitor):
         
         resultType = TypeVariable()
         log('调用的函数', str(funType))
-        unify(Function([argTypes[0]], [resultType]), funType)
+        unify(Function(argTypes, [resultType]), funType)
         return resultType
 
 
@@ -156,6 +159,7 @@ def main():
     filePath = "/examples/3_function_retx.al"
     filePath = "/examples/tmp.al"
     filePath = "/examples/4_apply_int.al"
+    filePath = "/examples/5_apply_args.al"
     input_stream = ant.FileStream(os.path.dirname(__file__)+filePath)
     
     lexer = ALangLexer(input_stream)

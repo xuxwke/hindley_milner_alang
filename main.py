@@ -4,6 +4,7 @@ from antlr.ALangParser import ALangParser
 from antlr.ALangVisitor import ALangVisitor
 
 from hms import fresh, is_integer_literal, Integer, Bool, ParseError, TypeOperator, Identifier, TypeVariable, Function, unify
+from gen_html import genHtml
 
 log = print
 
@@ -26,6 +27,9 @@ class TypeInferVisitor(ALangVisitor):
     def symbolTypeJson(self):
         import json
         return json.dumps(self._symbolType, ensure_ascii=False, indent=2)
+    
+    def symbolTypeMap(self):
+        return self._symbolType
     
     def enter(self):
         self._envs.append({})
@@ -185,6 +189,8 @@ def main():
     # 并且记录类型在实例变量中
     visitor.visit(tree)
     log(visitor.symbolTypeJson())
+
+    genHtml(filePath, "/examples/index.html", visitor.symbolTypeMap())
 
 if __name__ == "__main__":
     main()

@@ -3,7 +3,7 @@ from antlr.ALangLexer import ALangLexer
 from antlr.ALangParser import ALangParser
 from antlr.ALangVisitor import ALangVisitor
 
-from hms import fresh, is_integer_literal, Integer, ParseError, TypeOperator, Identifier, TypeVariable, Function, unify
+from hms import fresh, is_integer_literal, Integer, Bool, ParseError, TypeOperator, Identifier, TypeVariable, Function, unify
 
 log = print
 
@@ -50,7 +50,7 @@ class TypeInferVisitor(ALangVisitor):
                     non_generic.add(t)
         return non_generic
 
-    def _getTypeFromEnv(self, name: str):
+    def _envGetType(self, name: str):
         for env in reversed(self._envs):
             if name in env:
                 return env[name]
@@ -58,8 +58,8 @@ class TypeInferVisitor(ALangVisitor):
         return None
 
     def getType(self, name: str, non_generic: set) -> TypeOperator:
-        if self._getTypeFromEnv(name) is not None:
-            return fresh(self._getTypeFromEnv(name), non_generic)
+        if self._envGetType(name) is not None:
+            return fresh(self._envGetType(name), non_generic)
         elif is_integer_literal(name):
             return Integer
         else:
@@ -83,6 +83,12 @@ class TypeInferVisitor(ALangVisitor):
         # 记录 symbol 和类型
         self.symbolTypeAdd(ctx.INT(), Integer)
         return Integer
+    
+    def visitLabelExpressionLiteralBool(self, ctx: ALangParser.LabelExpressionLiteralBoolContext):
+        # 返回 bool 类型
+        # 记录 symbol 和类型
+        self.symbolTypeAdd(ctx.BOOL(), Bool)
+        return Bool
     
     def visitLabelExpressionVariable(self, ctx: ALangParser.LabelExpressionVariableContext):
         # 返回变量的类型
@@ -151,6 +157,14 @@ class TypeInferVisitor(ALangVisitor):
         unify(Function(argTypes, [resultType]), funType)
         return resultType
 
+    def visitLabelExpressionAssign(self, ctx: ALangParser.LabelExpressionAssignContext):
+        # 赋值表达式
+        log('visit 赋值', ctx.VAR().getText())
+        exprType = self.visit(ctx.expression())
+        varType = self.getType(ctx.VAR().getText(), self.getNonNenericSet())
+        unify(varType, exprType)
+        self.symbolTypeAdd(ctx.VAR(), varType)
+        return None
 
 def main():
     import os
@@ -160,6 +174,7 @@ def main():
     filePath = "/examples/tmp.al"
     filePath = "/examples/4_apply_int.al"
     filePath = "/examples/5_apply_args.al"
+    filePath = "/examples/6_if.al"
     input_stream = ant.FileStream(os.path.dirname(__file__)+filePath)
     
     lexer = ALangLexer(input_stream)

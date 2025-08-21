@@ -1,15 +1,47 @@
 
 <!DOCTYPE html>
 <html>
+<head>
+<style>
+    .read-only-code-container {
+        display: flex;
+        border-style:solid;
+        border-color: gray;
+        border-width: 1px;
+        padding: 5px 5px 5px 0px;
+        line-height: 1.2;
+    }
+    .line {
+        display: flex;
+        white-space: pre;
+        margin: 0px;
+    }
+    .lineno {
+        /* background-color: #f1f1f1; */
+        white-space: pre;
+        margin-right: 5px;
+    }
+    .white-space-pre {
+        white-space: pre;
+    }
+</style>
+</head>
 <body>
-<span class="token ">var</span> <span class="token int">a</span> <span class="token ">=</span> <span class="token int">10</span><br>
-<span class="token ">var</span> <span class="token bool">b</span> <span class="token ">=</span> <span class="token bool">false</span><br>
-<br>
-<span class="token ">if</span> <span class="token ">(</span><span class="token int">a</span> <span class="token ">></span> <span class="token int">0</span><span class="token ">)</span> <span class="token ">{</span><br>
-    <span class="token bool">b</span> <span class="token ">=</span> <span class="token bool">true</span><br>
-<span class="token ">}</span> <span class="token ">else</span> <span class="token ">{</span><br>
-<br>
-    <span class="token bool">b</span> <span class="token ">=</span> <span class="token bool">false</span><br>
-<span class="token ">}</span>
+<div class="read-only-code-container">
+
+<div>
+<div class="line"><span class='lineno'>   1</span></div>
+<div class="line"><span class='lineno'>   2</span></div>
+<div class="line"><span class='lineno'>   3</span></div>
+<div class="line"><span class='lineno'>   4</span></div>
+</div>
+
+<div>
+
+<div class="white-space-pre"><span class="token ">var</span> <span class="token int">a</span> <span class="token ">=</span> <span class="token int">10</span></div>
+<div class="white-space-pre"><span class="token ">var</span> <span class="token bool">b</span> <span class="token ">=</span> <span class="token bool">false</span></div>
+<div class="white-space-pre"></div>
+<div class="white-space-pre"><span class="token ">if</span> <span class="token ">(</span><span class="token int">a</span> <span class="token ">></span> <span class="token int">0</span><span class="token ">)</span> <span class="token ">{</span></div>
+</div>
 </body>
 </html>

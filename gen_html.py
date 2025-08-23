@@ -11,6 +11,9 @@ htmlTemplate = """
 <html>
 <head>
 <style>
+    .relative {
+        position: relative;
+    }
     .read-only-code-container {
         display: flex;
         border-style:solid;
@@ -18,6 +21,9 @@ htmlTemplate = """
         border-width: 1px;
         padding: 5px 5px 5px 0px;
         line-height: 1.2;
+    }
+    .code-line-container {
+        width: 100%;
     }
     .line {
         display: flex;
@@ -32,12 +38,18 @@ htmlTemplate = """
     .white-space-pre {
         white-space: pre;
     }
+    .white-space-pre:hover {
+        background-color: rgb(230, 239, 253);
+    }
     .lineno-container {
         display: flex;
         flex-direction: column;
         align-items: flex-end;
         margin-right: 5px;
         background-color: #f5f5f5;
+    }
+    .code-line-container {
+        width: 100%;
     }
     .token-type-var {
         color: blue;
@@ -51,6 +63,22 @@ htmlTemplate = """
     .token-type-bool {
         color: #493BAB;
     }
+    .infer-type-tooltip {
+        position: absolute;
+        color: rgba(0, 0, 0, 0);
+        background-color: rgba(245, 222, 179, 0);
+        top: -30px;
+        padding: 5px;
+        z-index: 1000;
+        pointer-events: none;
+    }
+    .infer-type-target {
+        position: relative;
+    }
+    .infer-type-target:hover + .infer-type-tooltip {
+        color: rgba(0, 0, 0, 1);
+        background-color: rgba(245, 222, 179, 1);
+    }
     
 </style>
 </head>
@@ -61,7 +89,7 @@ htmlTemplate = """
 __lineno__
 </div>
 
-<div>
+<div class="code-line-container">
 __code__
 </div>
 </body>
@@ -97,6 +125,7 @@ def genHtml(filePath: str, outputPath: str, inferTypeMap: dict[str, str]):
     curColumnNum = 0
     htmlElements.append('<div class="white-space-pre">')
     for token in stream.tokens:
+        # 补充换行
         while curLineNum < token.line:
             curLineNum += 1
             if curColumnNum == 0:
@@ -106,6 +135,7 @@ def genHtml(filePath: str, outputPath: str, inferTypeMap: dict[str, str]):
             # 新的一行, col 置 1
             curColumnNum = 0
 
+        # 补充列的空格
         while curColumnNum < token.column:
             htmlElements.append(' ')
             curColumnNum += 1
@@ -113,7 +143,7 @@ def genHtml(filePath: str, outputPath: str, inferTypeMap: dict[str, str]):
         if token.type == ant.Token.EOF:
             continue
 
-        log(f'{token.text} {token.line} {token.column} {token.type}')
+        # log(f'{token.text} {token.line} {token.column} {token.type}')
         tokenType = 'unknown'
         if token.type == ALangLexer.VAR:
             tokenType = "var"
@@ -122,11 +152,14 @@ def genHtml(filePath: str, outputPath: str, inferTypeMap: dict[str, str]):
         elif token.type == ALangLexer.BOOL:
             tokenType = "bool"
         else:
-            if token.text in {'var', 'if', 'else', 'return', 'function'}:
+            if token.text in {'var', 'const', 'if', 'else', 'return', 'function'}:
                 tokenType = 'keyword'
 
         inferType = inferTypeMap.get(f"{token.text}_{token.line}_{token.column}", "")
-        htmlElements.append(f'<span class="token-type-{tokenType} infer-type-{inferType}">{token.text}</span>')
+        htmlElements.append(f'<span class="relative"><span class="token-type-{tokenType} infer-type-target">{token.text}</span>')
+        if inferType != "" and tokenType in {'var'}:
+            htmlElements.append(f'<span class="infer-type-tooltip">{inferType}</span>')
+        htmlElements.append(f'</span>')
         curColumnNum += len(token.text)
     
     htmlElements.append('</div>')

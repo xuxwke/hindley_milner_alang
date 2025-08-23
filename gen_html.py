@@ -39,6 +39,19 @@ htmlTemplate = """
         margin-right: 5px;
         background-color: #f5f5f5;
     }
+    .token-type-var {
+        color: blue;
+    }
+    .token-type-keyword {
+        color: #770088;
+    }
+    .token-type-int {
+        color: #116644;
+    }
+    .token-type-bool {
+        color: #493BAB;
+    }
+    
 </style>
 </head>
 <body>
@@ -99,9 +112,21 @@ def genHtml(filePath: str, outputPath: str, inferTypeMap: dict[str, str]):
 
         if token.type == ant.Token.EOF:
             continue
-        log(f'{token.text} {token.line} {token.column}')
+
+        log(f'{token.text} {token.line} {token.column} {token.type}')
+        tokenType = 'unknown'
+        if token.type == ALangLexer.VAR:
+            tokenType = "var"
+        elif token.type == ALangLexer.INT:
+            tokenType = "int"
+        elif token.type == ALangLexer.BOOL:
+            tokenType = "bool"
+        else:
+            if token.text in {'var', 'if', 'else', 'return', 'function'}:
+                tokenType = 'keyword'
+
         inferType = inferTypeMap.get(f"{token.text}_{token.line}_{token.column}", "")
-        htmlElements.append(f'<span class="token {inferType}">{token.text}</span>')
+        htmlElements.append(f'<span class="token-type-{tokenType} infer-type-{inferType}">{token.text}</span>')
         curColumnNum += len(token.text)
     
     htmlElements.append('</div>')
@@ -112,5 +137,6 @@ def genHtml(filePath: str, outputPath: str, inferTypeMap: dict[str, str]):
 
 if __name__ == '__main__':
     filePath = "/examples/1_var.al"
+    filePath = "/examples/6_if.al"
     htmlPath = "/examples/index.html"
     genHtml(filePath, htmlPath, {})

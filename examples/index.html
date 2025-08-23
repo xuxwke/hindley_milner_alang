@@ -31,6 +31,19 @@
         margin-right: 5px;
         background-color: #f5f5f5;
     }
+    .token-type-var {
+        color: blue;
+    }
+    .token-type-keyword {
+        color: #770088;
+    }
+    .token-type-int {
+        color: #116644;
+    }
+    .token-type-bool {
+        color: #493BAB;
+    }
+    
 </style>
 </head>
 <body>
@@ -49,15 +62,15 @@
 </div>
 
 <div>
-<div class="white-space-pre"><span class="token ">var</span> <span class="token int">a</span> <span class="token ">=</span> <span class="token int">10</span></div>
-<div class="white-space-pre"><span class="token ">var</span> <span class="token bool">b</span> <span class="token ">=</span> <span class="token bool">false</span></div>
+<div class="white-space-pre"><span class="token-type-keyword infer-type-">var</span> <span class="token-type-var infer-type-int">a</span> <span class="token-type-unknown infer-type-">=</span> <span class="token-type-int infer-type-int">10</span></div>
+<div class="white-space-pre"><span class="token-type-keyword infer-type-">var</span> <span class="token-type-var infer-type-bool">b</span> <span class="token-type-unknown infer-type-">=</span> <span class="token-type-bool infer-type-bool">false</span></div>
 <div class="white-space-pre"> </div>
-<div class="white-space-pre"><span class="token ">if</span> <span class="token ">(</span><span class="token int">a</span> <span class="token ">></span> <span class="token int">0</span><span class="token ">)</span> <span class="token ">{</span></div>
-<div class="white-space-pre">    <span class="token bool">b</span> <span class="token ">=</span> <span class="token bool">true</span></div>
-<div class="white-space-pre"><span class="token ">}</span> <span class="token ">else</span> <span class="token ">{</span></div>
+<div class="white-space-pre"><span class="token-type-keyword infer-type-">if</span> <span class="token-type-unknown infer-type-">(</span><span class="token-type-var infer-type-int">a</span> <span class="token-type-unknown infer-type-">></span> <span class="token-type-int infer-type-int">0</span><span class="token-type-unknown infer-type-">)</span> <span class="token-type-unknown infer-type-">{</span></div>
+<div class="white-space-pre">    <span class="token-type-var infer-type-bool">b</span> <span class="token-type-unknown infer-type-">=</span> <span class="token-type-bool infer-type-bool">true</span></div>
+<div class="white-space-pre"><span class="token-type-unknown infer-type-">}</span> <span class="token-type-keyword infer-type-">else</span> <span class="token-type-unknown infer-type-">{</span></div>
 <div class="white-space-pre"> </div>
-<div class="white-space-pre">    <span class="token bool">b</span> <span class="token ">=</span> <span class="token bool">false</span></div>
-<div class="white-space-pre"><span class="token ">}</span></div>
+<div class="white-space-pre">    <span class="token-type-var infer-type-bool">b</span> <span class="token-type-unknown infer-type-">=</span> <span class="token-type-bool infer-type-bool">false</span></div>
+<div class="white-space-pre"><span class="token-type-unknown infer-type-">}</span></div>
 </div>
 </body>
 </html>

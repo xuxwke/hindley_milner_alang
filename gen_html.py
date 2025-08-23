@@ -12,6 +12,7 @@ htmlTemplate = """
 <head>
 <style>
     .read-only-code-container {
+        display: flex;
         border-style:solid;
         border-color: gray;
         border-width: 1px;
@@ -24,22 +25,42 @@ htmlTemplate = """
         margin: 0px;
     }
     .lineno {
-        background-color: #f1f1f1;
+        /* background-color: #f1f1f1; */
         white-space: pre;
         margin-right: 5px;
     }
     .white-space-pre {
         white-space: pre;
     }
+    .lineno-container {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        margin-right: 5px;
+        background-color: #f5f5f5;
+    }
 </style>
 </head>
 <body>
 <div class="read-only-code-container">
-__replace__
+
+<div class="lineno-container">
+__lineno__
+</div>
+
+<div>
+__code__
 </div>
 </body>
 </html>
 """
+
+
+def genLinenoHtml(maxLineNum: int) -> str:
+    htmlElements: list[str] = []
+    for i in range(maxLineNum):
+        htmlElements.append(f'<div class="line"><span class="lineno">{i+1:4}</span></div>')
+    return '\n'.join(htmlElements)
 
 
 def genHtml(filePath: str, outputPath: str, inferTypeMap: dict[str, str]):
@@ -50,19 +71,25 @@ def genHtml(filePath: str, outputPath: str, inferTypeMap: dict[str, str]):
     stream = ant.CommonTokenStream(lexer)
     stream.fill()
     htmlElements: list[str] = []
+
+    # 生成行号
+    maxLineNum = stream.tokens[-1].line
+    log('maxLineNum', maxLineNum)
+    linnoHtml = genLinenoHtml(maxLineNum)
+    res = htmlTemplate.replace('__lineno__', linnoHtml)
+
+
+    # 生成代码
     curLineNum = 1
     curColumnNum = 0
-    htmlElements.append('<div class="line"><div class="white-space-pre">')
-    htmlElements.append(f"<span class='lineno'>   {curLineNum}</span>")
+    htmlElements.append('<div class="white-space-pre">')
     for token in stream.tokens:
         while curLineNum < token.line:
-            htmlElements.append('</div></div>')
-            htmlElements.append('\n')
-            htmlElements.append('<div class="line"><div class="white-space-pre">')
-
             curLineNum += 1
-            htmlElements.append(f"<span class='lineno'>   {curLineNum}</span>")
-
+            if curColumnNum == 0:
+                htmlElements.append(' ')
+            htmlElements.append('</div>\n')
+            htmlElements.append('<div class="white-space-pre">')
             # 新的一行, col 置 1
             curColumnNum = 0
 
@@ -70,7 +97,6 @@ def genHtml(filePath: str, outputPath: str, inferTypeMap: dict[str, str]):
             htmlElements.append(' ')
             curColumnNum += 1
 
-        log('colNum', curColumnNum)
         if token.type == ant.Token.EOF:
             continue
         log(f'{token.text} {token.line} {token.column}')
@@ -78,10 +104,8 @@ def genHtml(filePath: str, outputPath: str, inferTypeMap: dict[str, str]):
         htmlElements.append(f'<span class="token {inferType}">{token.text}</span>')
         curColumnNum += len(token.text)
     
-    htmlElements.append('</div></div>')
-
-
-    res = htmlTemplate.replace('__replace__', ''.join(htmlElements))
+    htmlElements.append('</div>')
+    res = res.replace('__code__', ''.join(htmlElements))
     with open(os.path.dirname(__file__)+outputPath, 'w', encoding='utf-8') as f:
         f.write(res)
 

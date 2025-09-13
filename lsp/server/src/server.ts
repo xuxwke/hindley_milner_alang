@@ -23,6 +23,10 @@ import {
 	TextDocument
 } from 'vscode-languageserver-textdocument';
 
+import {
+	TypeInfer
+} from './type_infer';
+
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -34,6 +38,7 @@ const documents = new TextDocuments(TextDocument);
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 let hasDiagnosticRelatedInformationCapability = false;
+let typeInfer: TypeInfer;
 
 connection.onInitialize(async (params: InitializeParams) => {
 	const capabilities = params.capabilities;
@@ -74,8 +79,8 @@ connection.onInitialize(async (params: InitializeParams) => {
 		};
 	}
 
-
-
+	typeInfer = new TypeInfer();
+	await typeInfer.setup();
 	return result;
 });
 
@@ -162,7 +167,8 @@ connection.languages.diagnostics.on(async (params) => {
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(change => {
 	console.log('onDidChangeContent', change.document.uri);
-	validateTextDocument(change.document);
+	typeInfer.typeInferUpdate(change.document.uri, change.document.getText());
+	// validateTextDocument(change.document);
 });
 
 async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
@@ -254,22 +260,13 @@ connection.onCompletionResolve(
 connection.onHover((_textDocumentPosition: TextDocumentPositionParams) => {
     console.log('onHover', _textDocumentPosition.textDocument.uri, _textDocumentPosition.position);
 
-    // 获取文档
-    const document = documents.get(_textDocumentPosition.textDocument.uri);
-    if (!document) {
-        return null;
-    }
+	let res = typeInfer.typeInferWithPosition(_textDocumentPosition.position.line + 1, _textDocumentPosition.position.character, _textDocumentPosition.textDocument.uri)
+	if (res === 'unknown') {
+		return null;
+	}
 
-    // 获取整个文档内容
-    const fullText = document.getText();
-
-	// 获取特定行的内容
-    const lineText = document.getText({
-        start: { line: _textDocumentPosition.position.line, character: 0 },
-        end:   { line: _textDocumentPosition.position.line + 1, character: 0 }
-    });
 	return {
-		contents: `当前行 ${lineText.trim()}`
+		contents: res
 	};
 });
 

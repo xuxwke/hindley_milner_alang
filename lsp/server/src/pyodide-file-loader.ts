@@ -37,8 +37,8 @@ export class PyodideFileLoader {
 		console.log('Pyodide and Python environment setup complete.');
 
 
-		var res = await this.executePythonFunction('visitor', 'typeInferCode', 'var a = 1');
-		console.log('Type inference result:', res);
+		// var res = await this.executePythonFunction('visitor', 'typeInferCode', 'var a = 1');
+		// console.log('Type inference result:', res);
 	}
 
     /**

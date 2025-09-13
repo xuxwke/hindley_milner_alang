@@ -23,6 +23,8 @@ export class TypeInfer {
 	}
 
 	async typeInferUpdate(documentUri: string, content: string) {
+		this.tokenTypeArr = new Array<TokenType>();
+
 		let res = await this.pyLoader.executePythonFunction('visitor', 'typeInferCode', content);
 		let d = JSON.parse(res);
 		/*
@@ -38,10 +40,11 @@ export class TypeInfer {
 		for (const [key, value] of Object.entries(d)) {
             // 按 _ 切割
 			let words = key.split('_');
-			let col = words[-1]
-			let line = words[-2]
+			let col = words[words.length - 1]
+			let line = words[words.length -2]
 			let token = words.slice(0, -2).join('_');
 			this.tokenTypeArr.push(new TokenType(token, value as string, parseInt(line), parseInt(col)));
+			// console.log(`Token: ${token}, Type: ${value}, Line: ${line}, Col: ${col}`);
         }
 	}
 
@@ -49,6 +52,7 @@ export class TypeInfer {
 		// 遍历数组
 		for (let i = 0; i < this.tokenTypeArr.length; i++) {
 			let t = this.tokenTypeArr[i];
+			// console.log(t);
 			if (t.line === line && t.col <= character && character <= t.col + t.token.length) {
 				return t.type;
 			}

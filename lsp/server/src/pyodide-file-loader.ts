@@ -14,7 +14,7 @@ export class PyodideFileLoader {
     private pyodide: PyodideInterface | null = null;
     private loadedModules: Map<string, string> = new Map();
 
-    constructor(private baseDir: string = path.join(__dirname, '../../..', 'type_infer')) {}
+    constructor(private baseDir: string = path.join(__dirname, '../../..', 'py')) {}
 
 	async setup() {
 		// 加载 pyodide

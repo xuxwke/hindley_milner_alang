@@ -1,1 +1,1 @@
-{"root":["./src/pyodide-file-loader.ts","./src/server.ts"],"version":"5.9.2"}
+{"root":["./src/pyodide-file-loader.ts","./src/server.ts","./src/type_infer.ts"],"version":"5.9.2"}

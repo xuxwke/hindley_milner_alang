@@ -23,9 +23,6 @@ import {
 	TextDocument
 } from 'vscode-languageserver-textdocument';
 
-import {
-	PyodideFileLoader
-} from './pyodide-file-loader';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -59,13 +56,14 @@ connection.onInitialize(async (params: InitializeParams) => {
 		capabilities: {
 			textDocumentSync: TextDocumentSyncKind.Incremental,
 			// Tell the client that this server supports code completion.
-			completionProvider: {
-				resolveProvider: true
-			},
-			diagnosticProvider: {
-				interFileDependencies: false,
-				workspaceDiagnostics: false
-			}
+			// completionProvider: {
+			// 	resolveProvider: true
+			// },
+			// diagnosticProvider: {
+			// 	interFileDependencies: false,
+			// 	workspaceDiagnostics: false
+			// },
+			hoverProvider: true,
 		}
 	};
 	if (hasWorkspaceFolderCapability) {
@@ -76,8 +74,7 @@ connection.onInitialize(async (params: InitializeParams) => {
 		};
 	}
 
-	let pyLoader = new PyodideFileLoader();
-	await pyLoader.setup();
+
 
 	return result;
 });
@@ -164,6 +161,7 @@ connection.languages.diagnostics.on(async (params) => {
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(change => {
+	console.log('onDidChangeContent', change.document.uri);
 	validateTextDocument(change.document);
 });
 
@@ -178,37 +176,37 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 
 	let problems = 0;
 	const diagnostics: Diagnostic[] = [];
-	while ((m = pattern.exec(text)) && problems < settings.maxNumberOfProblems) {
-		problems++;
-		const diagnostic: Diagnostic = {
-			severity: DiagnosticSeverity.Warning,
-			range: {
-				start: textDocument.positionAt(m.index),
-				end: textDocument.positionAt(m.index + m[0].length)
-			},
-			message: `${m[0]} is all uppercase.`,
-			source: 'ex'
-		};
-		if (hasDiagnosticRelatedInformationCapability) {
-			diagnostic.relatedInformation = [
-				{
-					location: {
-						uri: textDocument.uri,
-						range: Object.assign({}, diagnostic.range)
-					},
-					message: 'Spelling matters'
-				},
-				{
-					location: {
-						uri: textDocument.uri,
-						range: Object.assign({}, diagnostic.range)
-					},
-					message: 'Particularly for names'
-				}
-			];
-		}
-		diagnostics.push(diagnostic);
-	}
+	// while ((m = pattern.exec(text)) && problems < settings.maxNumberOfProblems) {
+	// 	problems++;
+	// 	const diagnostic: Diagnostic = {
+	// 		severity: DiagnosticSeverity.Warning,
+	// 		range: {
+	// 			start: textDocument.positionAt(m.index),
+	// 			end: textDocument.positionAt(m.index + m[0].length)
+	// 		},
+	// 		message: `${m[0]} is all uppercase.`,
+	// 		source: 'ex'
+	// 	};
+	// 	if (hasDiagnosticRelatedInformationCapability) {
+	// 		diagnostic.relatedInformation = [
+	// 			{
+	// 				location: {
+	// 					uri: textDocument.uri,
+	// 					range: Object.assign({}, diagnostic.range)
+	// 				},
+	// 				message: 'Spelling matters'
+	// 			},
+	// 			{
+	// 				location: {
+	// 					uri: textDocument.uri,
+	// 					range: Object.assign({}, diagnostic.range)
+	// 				},
+	// 				message: 'Particularly for names'
+	// 			}
+	// 		];
+	// 	}
+	// 	diagnostics.push(diagnostic);
+	// }
 	return diagnostics;
 }
 
@@ -252,6 +250,28 @@ connection.onCompletionResolve(
 		return item;
 	}
 );
+
+connection.onHover((_textDocumentPosition: TextDocumentPositionParams) => {
+    console.log('onHover', _textDocumentPosition.textDocument.uri, _textDocumentPosition.position);
+
+    // 获取文档
+    const document = documents.get(_textDocumentPosition.textDocument.uri);
+    if (!document) {
+        return null;
+    }
+
+    // 获取整个文档内容
+    const fullText = document.getText();
+
+	// 获取特定行的内容
+    const lineText = document.getText({
+        start: { line: _textDocumentPosition.position.line, character: 0 },
+        end:   { line: _textDocumentPosition.position.line + 1, character: 0 }
+    });
+	return {
+		contents: `当前行 ${lineText.trim()}`
+	};
+});
 
 // Make the text document manager listen on the connection
 // for open, change and close text document events
